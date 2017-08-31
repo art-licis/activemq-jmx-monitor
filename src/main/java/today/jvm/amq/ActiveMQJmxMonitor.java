@@ -93,43 +93,31 @@ public class ActiveMQJmxMonitor {
 		}
 	}
 
-	protected void querySlowConsumers() throws IOException {
-		Set<ObjectInstance> objectInstances = mBeanConnection.queryMBeans(consumersObjectName, SLOW_CONSUMER_EXP);
-
+	protected void query(Set<ObjectInstance> currentInstances, Set<ObjectInstance> queryResultInstances, NotificationType notificationType) throws IOException {
 		Set<ObjectInstance> removed = new HashSet<>();
-		for (ObjectInstance old : slowConsumers) {
-			if (!objectInstances.contains(old)) {
+		for (ObjectInstance old : currentInstances) {
+			if (!queryResultInstances.contains(old)) {
 				removed.add(old);
-				notifyListeners(NotificationType.SLOW_CONSUMER, State.END, old);
+				notifyListeners(notificationType, State.END, old);
 			}
 		}
-		slowConsumers.removeAll(removed);
+		currentInstances.removeAll(removed);
 
-		for (ObjectInstance objectInstance : objectInstances) {
-			if (!slowConsumers.contains(objectInstance)) {
-				slowConsumers.add(objectInstance);
-				notifyListeners(NotificationType.SLOW_CONSUMER, State.START, objectInstance);
+		for (ObjectInstance objectInstance : queryResultInstances) {
+			if (!currentInstances.contains(objectInstance)) {
+				currentInstances.add(objectInstance);
+				notifyListeners(notificationType, State.START, objectInstance);
 			}
 		}
 	}
 
+	protected void querySlowConsumers() throws IOException {
+		Set<ObjectInstance> objectInstances = mBeanConnection.queryMBeans(consumersObjectName, SLOW_CONSUMER_EXP);
+		query(slowConsumers, objectInstances, NotificationType.SLOW_CONSUMER);
+	}
+
 	protected void queryBlockedProducers() throws IOException {
 		Set<ObjectInstance> objectInstances = mBeanConnection.queryMBeans(producersObjectName, PRODUCER_BLOCKED_EXP);
-
-		Set<ObjectInstance> removed = new HashSet<>();
-		for (ObjectInstance old : blockedProducers) {
-			if (!objectInstances.contains(old)) {
-				removed.add(old);
-				notifyListeners(NotificationType.PRODUCER_BLOCKED, State.END, old);
-			}
-		}
-		blockedProducers.removeAll(removed);
-
-		for (ObjectInstance objectInstance : objectInstances) {
-			if (!blockedProducers.contains(objectInstance)) {
-				blockedProducers.add(objectInstance);
-				notifyListeners(NotificationType.PRODUCER_BLOCKED, State.START, objectInstance);
-			}
-		}
+		query(blockedProducers, objectInstances, NotificationType.PRODUCER_BLOCKED);
 	}
 }
